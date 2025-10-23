@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { db } from '../../lib/firebase';
-import { collection, getDocs, deleteDoc, doc, updateDoc, getDoc, query, where } from 'firebase/firestore';
-import { useAuth } from '../../lib/authContext';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, deleteDoc, doc, updateDoc, getDoc, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '@/lib/authContext';
 import Link from 'next/link';
 
 export default function Admin() {
@@ -12,21 +12,18 @@ export default function Admin() {
   const router = useRouter();
   const [annonces, setAnnonces] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [visibleAnnonces, setVisibleAnnonces] = useState(6); // Limite initiale
+  const [visibleAnnonces, setVisibleAnnonces] = useState(6);
   const ADMIN_EMAIL = 'masta@gmail.com';
 
-  // Rediriger si non admin
   useEffect(() => {
     if (!loading && (!user || user.email !== ADMIN_EMAIL)) {
       router.push('/');
     }
   }, [user, loading, router]);
 
-  // Charger toutes les annonces et utilisateurs
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Charger les annonces
         const annoncesSnapshot = await getDocs(collection(db, 'annonces'));
         const annoncesList = annoncesSnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -35,7 +32,6 @@ export default function Admin() {
         }));
         setAnnonces(annoncesList);
 
-        // Charger les utilisateurs et compter leurs annonces
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const usersList = await Promise.all(
           usersSnapshot.docs.map(async (doc) => {
@@ -46,10 +42,11 @@ export default function Admin() {
               id: doc.id,
               ...userData,
               blocked: userData.blocked || false,
-              articleCount: annoncesSnapshot.size, // Nombre d'articles publiés
+              articleCount: annoncesSnapshot.size,
             };
           })
         );
+        console.log('Utilisateurs chargés :', usersList);
         setUsers(usersList);
       } catch (error) {
         console.error('Erreur lors du chargement des données :', error);
@@ -58,7 +55,6 @@ export default function Admin() {
     fetchData();
   }, []);
 
-  // Supprimer une annonce
   const handleDeleteAnnonce = async (id: string) => {
     if (confirm('Voulez-vous supprimer cette annonce ?')) {
       try {
@@ -71,11 +67,29 @@ export default function Admin() {
     }
   };
 
-  // Approuver/Bloquer une annonce
   const handleToggleAnnonceStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'pending' ? 'approved' : 'pending';
     try {
       await updateDoc(doc(db, 'annonces', id), { status: newStatus });
+      const annonceRef = doc(db, 'annonces', id);
+      const annonceDoc = await getDoc(annonceRef);
+      const annonce = { id, ...annonceDoc.data() };
+      let message = '';
+      let type = '';
+      if (newStatus === 'approved') {
+        message = `Votre annonce "${annonce.titre}" a été approuvée.`;
+        type = 'annonce_approbation';
+      } else {
+        message = `Votre annonce "${annonce.titre}" a été bloquée.`;
+        type = 'annonce_blocage';
+      }
+      await addDoc(collection(db, 'notifications'), {
+        userId: annonce.userId,
+        message,
+        type,
+        createdAt: serverTimestamp(),
+        read: false,
+      });
       setAnnonces(annonces.map((annonce) =>
         annonce.id === id ? { ...annonce, status: newStatus } : annonce
       ));
@@ -85,7 +99,6 @@ export default function Admin() {
     }
   };
 
-  // Supprimer un utilisateur
   const handleDeleteUser = async (userId: string) => {
     if (confirm('Voulez-vous supprimer cet utilisateur ?')) {
       try {
@@ -98,7 +111,6 @@ export default function Admin() {
     }
   };
 
-  // Bloquer/Débloquer un utilisateur
   const handleToggleUserBlock = async (userId: string, currentBlocked: boolean) => {
     const newBlocked = !currentBlocked;
     try {
@@ -112,12 +124,10 @@ export default function Admin() {
     }
   };
 
-  // Charger plus d'annonces
   const loadMoreAnnonces = () => {
     setVisibleAnnonces((prev) => prev + 6);
   };
 
-  // Réduire le nombre d'annonces
   const loadLessAnnonces = () => {
     setVisibleAnnonces(6);
   };
@@ -127,7 +137,7 @@ export default function Admin() {
   }
 
   if (!user || user.email !== ADMIN_EMAIL) {
-    return null; // Redirigé par useEffect
+    return null;
   }
 
   return (
@@ -213,6 +223,9 @@ export default function Admin() {
                 <div className="mt-4 space-x-2">
                   <Link href={`/admin/user/${user.id}`} className="bg-blue-600 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition">
                     Voir les annonces
+                  </Link>
+                  <Link href={`/admin/user/${user.id}/details`} className="bg-blue-600 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition mr-2">
+                    Voir détails
                   </Link>
                   <button
                     onClick={() => handleDeleteUser(user.id)}

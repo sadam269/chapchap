@@ -5,8 +5,8 @@ import { db } from '../lib/firebase';
 import { collection, query, orderBy, where, getDocs, addDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { useAuth } from '../lib/authContext';
-import { useRouter } from 'next/navigation'; // À ajuster si App Router pose problème
-import { FaHeart, FaRegHeart } from 'react-icons/fa'; // Icônes de cœur
+import { useRouter } from 'next/navigation';
+import { FaHeart, FaRegHeart } from 'react-icons/fa';
 
 export default function Home() {
   const [annonces, setAnnonces] = useState<any[]>([]);
@@ -25,24 +25,20 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const router = useRouter();
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // Pour forcer le re-render
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    const handleRouteChange = () => {
-      setRefreshTrigger((prev) => prev + 1); // Forcer un re-render
-    };
-
-    // Écouter les changements de route (alternative si router.events ne fonctionne pas)
+    const handleRouteChange = () => setRefreshTrigger((prev) => prev + 1);
     const handlePopState = () => setRefreshTrigger((prev) => prev + 1);
     window.addEventListener('popstate', handlePopState);
 
     fetchInitialAnnonces();
     fetchCategories();
-    const interval = setInterval(() => setRefreshTrigger((prev) => prev + 1), 30000); // Mise à jour toutes les 30 secondes
+    const interval = setInterval(() => setRefreshTrigger((prev) => prev + 1), 30000);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      clearInterval(interval); // Nettoyage à la démontage
+      clearInterval(interval);
     };
   }, [user]);
 
@@ -78,7 +74,7 @@ export default function Home() {
         const favorisSnapshot = await getDocs(
           query(collection(db, 'favoris'), where('userId', '==', user.uid))
         );
-        console.log('Favoris snapshot:', favorisSnapshot.docs.map(doc => doc.data())); // Débogage
+        console.log('Favoris snapshot:', favorisSnapshot.docs.map(doc => doc.data()));
         const favorisIds = favorisSnapshot.docs.map((doc) => doc.data().annonceId);
         annoncesList = annoncesList.map((annonce) => ({
           ...annonce,
@@ -101,21 +97,11 @@ export default function Home() {
         try {
           let q = query(collection(db, 'annonces'), orderBy('createdAt', 'desc'));
 
-          if (filters.categorie) {
-            q = query(q, where('categorie', '==', filters.categorie));
-          }
-          if (filters.prixMax && !isNaN(Number(filters.prixMax))) {
-            q = query(q, where('prix', '<=', Number(filters.prixMax)));
-          }
-          if (filters.localisation) {
-            q = query(q, where('localisation', '==', filters.localisation));
-          }
-          if (filters.dateMin) {
-            q = query(q, where('createdAt', '>=', new Date(filters.dateMin)));
-          }
-          if (filters.etat) {
-            q = query(q, where('etat', '==', filters.etat));
-          }
+          if (filters.categorie) q = query(q, where('categorie', '==', filters.categorie));
+          if (filters.prixMax && !isNaN(Number(filters.prixMax))) q = query(q, where('prix', '<=', Number(filters.prixMax)));
+          if (filters.localisation) q = query(q, where('localisation', '==', filters.localisation));
+          if (filters.dateMin) q = query(q, where('createdAt', '>=', new Date(filters.dateMin)));
+          if (filters.etat) q = query(q, where('etat', '==', filters.etat));
 
           const querySnapshot = await getDocs(q);
           let annoncesList = querySnapshot.docs.map((doc) => ({
@@ -154,25 +140,21 @@ export default function Home() {
       };
       fetchAnnonces();
     }
-  }, [applyFilters, filters, user, refreshTrigger]); // Ajout de refreshTrigger
+  }, [applyFilters, filters, user, refreshTrigger]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleApplyFilters = () => {
-    setApplyFilters(true);
-  };
+  const handleApplyFilters = () => setApplyFilters(true);
 
   const handleClearFilters = () => {
     setFilters({ categorie: '', prixMax: '', localisation: '', searchTerm: '', dateMin: '', etat: '' });
     setApplyFilters(true);
   };
 
-  const handleShowMore = () => {
-    setVisibleCount((prev) => prev + 9);
-  };
+  const handleShowMore = () => setVisibleCount((prev) => prev + 9);
 
   const addToFavoris = async (annonceId: string) => {
     if (!user) {
@@ -190,7 +172,7 @@ export default function Home() {
           annonceId: annonceId,
           createdAt: new Date(),
         });
-        setRefreshTrigger((prev) => prev + 1); // Forcer le re-render
+        setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
       console.error('Erreur lors de l’ajout aux favoris :', error);
@@ -204,19 +186,15 @@ export default function Home() {
       const favorisSnapshot = await getDocs(
         query(collection(db, 'favoris'), where('userId', '==', user.uid), where('annonceId', '==', annonceId))
       );
-      favorisSnapshot.forEach(async (doc) => {
-        await deleteDoc(doc.ref);
-      });
-      setRefreshTrigger((prev) => prev + 1); // Forcer le re-render
+      favorisSnapshot.forEach(async (doc) => await deleteDoc(doc.ref));
+      setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       console.error('Erreur lors de la suppression des favoris :', error);
       setError('Erreur lors de la suppression des favoris.');
     }
   };
 
-  if (loading) {
-    return <div className="container mx-auto p-4">Chargement...</div>;
-  }
+  if (loading) return <div className="container mx-auto p-4">Chargement...</div>;
 
   return (
     <div className="container mx-auto p-4 bg-gray-100 rounded-lg shadow-md">
@@ -234,9 +212,7 @@ export default function Home() {
             className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
           >
             {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat || 'Toutes les catégories'}
-              </option>
+              <option key={cat} value={cat}>{cat || 'Toutes les catégories'}</option>
             ))}
           </select>
           <input
@@ -334,9 +310,7 @@ export default function Home() {
           </button>
         )}
       </div>
-      {annonces.length === 0 && (
-        <p className="text-gray-600 mt-4">Aucune annonce disponible avec ces filtres.</p>
-      )}
+      {annonces.length === 0 && <p className="text-gray-600 mt-4">Aucune annonce disponible avec ces filtres.</p>}
     </div>
   );
 }

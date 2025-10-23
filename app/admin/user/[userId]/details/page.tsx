@@ -77,15 +77,22 @@ export default function UserAdmin() {
       const annonceRef = doc(db, 'annonces', id);
       const annonceDoc = await getDoc(annonceRef);
       const annonce = { id, ...annonceDoc.data() };
+      let message = '';
+      let type = '';
       if (newStatus === 'approved') {
-        await addDoc(collection(db, 'notifications'), {
-          userId: annonce.userId,
-          message: `Votre annonce "${annonce.titre}" a été approuvée.`,
-          type: 'annonce_approbation',
-          createdAt: serverTimestamp(),
-          read: false,
-        });
+        message = `Votre annonce "${annonce.titre}" a été approuvée.`;
+        type = 'annonce_approbation';
+      } else {
+        message = `Votre annonce "${annonce.titre}" a été bloquée.`;
+        type = 'annonce_blocage';
       }
+      await addDoc(collection(db, 'notifications'), {
+        userId: annonce.userId,
+        message,
+        type,
+        createdAt: serverTimestamp(),
+        read: false,
+      });
       setAnnonces(annonces.map((annonce) =>
         annonce.id === id ? { ...annonce, status: newStatus } : annonce
       ));
@@ -148,7 +155,7 @@ export default function UserAdmin() {
   // Gérer l'upload d'image
   const handleImageUpload = async (file: File) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file); // Correspond à 'file' dans /api/upload
 
     try {
       const response = await fetch('/api/upload', {
@@ -198,7 +205,7 @@ export default function UserAdmin() {
 
       <div className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {annonces.length > 0 ? (
+          {annonces.length > 0 ? ( // Changé pour vérifier directement annonces.length
             annonces.slice(0, visibleAnnonces).map((annonce) => (
               <div key={annonce.id} className="bg-white p-4 rounded-lg shadow-md">
                 {editingId === annonce.id ? (
@@ -300,7 +307,7 @@ export default function UserAdmin() {
                         <img
                           src={annonce.imageUrl}
                           alt={annonce.titre}
-                          className="w-full max-h-64 object-contain rounded-lg mb-4" // Changé object-cover par object-contain et h-64 par max-h-64
+                          className="w-full h-64 object-contain rounded-lg mb-4"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                             console.error('Image non chargée :', annonce.imageUrl);

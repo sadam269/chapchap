@@ -15,13 +15,55 @@ export default function AjoutAnnonce() {
   const [categorie, setCategorie] = useState('');
   const [localisation, setLocalisation] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       setError('Vous devez être connecté pour ajouter une annonce.');
       return;
+    }
+
+    let finalImageUrl = imageUrl;
+    if (imageFile) {
+      setUploading(true);
+      try {
+        const formDataToUpload = new FormData();
+        formDataToUpload.append('image', imageFile);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formDataToUpload,
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Erreur lors de l’upload');
+        }
+        finalImageUrl = result.imageUrl;
+      } catch (error: any) {
+        console.error('Erreur lors de l’upload de l’image :', error);
+        setError(error.message || 'Erreur lors de l’upload de l’image.');
+        setUploading(false);
+        return;
+      } finally {
+        setUploading(false);
+      }
     }
 
     try {
@@ -31,9 +73,9 @@ export default function AjoutAnnonce() {
         prix: parseFloat(prix),
         categorie,
         localisation,
-        imageUrl,
-        userId: user.uid, // Ajout de l'userId de l'utilisateur connecté
-        status: 'pending', // Statut par défaut
+        imageUrl: finalImageUrl,
+        userId: user.uid,
+        status: 'pending',
         createdAt: new Date().toISOString(),
       });
       router.push('/mes-annonces');
@@ -102,19 +144,36 @@ export default function AjoutAnnonce() {
           />
         </div>
         <div>
-          <label className="block text-gray-700">URL de l'image</label>
+          <label className="block text-gray-700">Image (ou URL)</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+          />
           <input
             type="text"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="Ou entrez une URL d'image"
             className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          {imagePreview && (
+            <div className="mt-4">
+              <img
+                src={imagePreview}
+                alt="Prévisualisation"
+                className="w-64 h-64 object-cover rounded-lg"
+              />
+            </div>
+          )}
         </div>
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+          disabled={uploading}
+          className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:bg-blue-400"
         >
-          Ajouter l'annonce
+          {uploading ? 'Ajout...' : 'Ajouter l\'annonce'}
         </button>
       </form>
     </div>

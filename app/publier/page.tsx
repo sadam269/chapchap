@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Ajout de useEffect
 import { db } from '../../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/authContext';
 
@@ -21,8 +21,32 @@ export default function Publier() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
+  const [existingCategories, setExistingCategories] = useState<string[]>([]); // Liste des catégories existantes
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/connexion');
+    }
+
+    // Récupérer les catégories existantes
+    const fetchCategories = async () => {
+      try {
+        const annoncesSnapshot = await getDocs(collection(db, 'annonces'));
+        const categories = new Set<string>();
+        annoncesSnapshot.forEach((doc) => {
+          const categorie = doc.data().categorie;
+          if (categorie) categories.add(categorie);
+        });
+        setExistingCategories(Array.from(categories));
+      } catch (error) {
+        console.error('Erreur lors du chargement des catégories :', error);
+      }
+    };
+
+    fetchCategories();
+  }, [user, loading, router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -98,6 +122,11 @@ export default function Publier() {
 
     try {
       const categorieFinale = formData.categorie === 'Autres' ? formData.categoriePersonnalisee : formData.categorie;
+      if (formData.categorie === 'Autres' && existingCategories.includes(formData.categoriePersonnalisee)) {
+        setError('Cette catégorie existe déjà. Veuillez la sélectionner dans la liste.');
+        setUploading(false);
+        return;
+      }
       await addDoc(collection(db, 'annonces'), {
         titre: formData.titre,
         description: formData.description,
@@ -121,9 +150,25 @@ export default function Publier() {
     }
   };
 
-  if (!user) {
-    return <div className="container mx-auto p-4">Veuillez vous connecter pour publier une annonce.</div>;
-  }
+  // Réinitialiser le formulaire
+  const handleCancel = () => {
+    setFormData({
+      titre: '',
+      description: '',
+      prix: '',
+      categorie: '',
+      categoriePersonnalisee: '',
+      localisation: '',
+      etat: '',
+    });
+    setImageFile(null);
+    setImageUrl('');
+    setImagePreview(null);
+    setError(null);
+  };
+
+  if (loading) return <div className="container mx-auto p-4">Chargement...</div>;
+  if (!user) return null; // Redirection gérée par useEffect
 
   return (
     <div className="container mx-auto p-4 bg-gray-100 rounded-lg shadow-md">
@@ -172,10 +217,9 @@ export default function Publier() {
             required
           >
             <option value="">Sélectionner une catégorie</option>
-            <option value="Vélos">Vélos</option>
-            <option value="Électronique">Électronique</option>
-            <option value="Meubles">Meubles</option>
-            <option value="Vêtements">Vêtements</option>
+            {existingCategories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
             <option value="Autres">Autres</option>
           </select>
         </div>
@@ -188,7 +232,7 @@ export default function Publier() {
               value={formData.categoriePersonnalisee}
               onChange={handleChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              placeholder="Ex: Jouets, Livres"
+              placeholder="Entrez une nouvelle catégorie"
               required
             />
           </div>
@@ -244,13 +288,29 @@ export default function Publier() {
             </div>
           )}
         </div>
-        <button
-          type="submit"
-          disabled={uploading}
-          className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400"
-        >
-          {uploading ? 'Publication...' : 'Publier'}
-        </button>
+        <div className="flex space-x-2 mb-4">
+          <button
+            type="submit"
+            disabled={uploading}
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400"
+          >
+            {uploading ? 'Publication...' : 'Publier'}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+          >
+            Retour à l'accueil
+          </button>
+        </div>
       </form>
     </div>
   );

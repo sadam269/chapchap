@@ -65,6 +65,13 @@ export default function Modifier({ params }: { params: { id: string } }) {
     }
   };
 
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setImageUrl(url); // Met à jour l'URL si valide
+    setImageFile(null); // Réinitialise le fichier si une URL est entrée
+    setImagePreview(url); // Affiche la prévisualisation de l'URL
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -98,6 +105,8 @@ export default function Modifier({ params }: { params: { id: string } }) {
         setUploading(false);
         return;
       }
+    } else if (!newImageUrl) {
+      newImageUrl = ''; // Garde l'URL existante si aucune nouvelle image ou URL
     }
 
     try {
@@ -109,7 +118,7 @@ export default function Modifier({ params }: { params: { id: string } }) {
         categorie: formData.categorie === 'Autres' ? formData.categoriePersonnalisee : formData.categorie,
         localisation: formData.localisation,
         imageUrl: newImageUrl || '',
-        userId: user.uid, // Assure que userId est maintenu
+        userId: user.uid,
         updatedAt: new Date().toISOString(),
       });
       console.log('Annonce modifiée avec succès !');
@@ -120,6 +129,10 @@ export default function Modifier({ params }: { params: { id: string } }) {
       setError('Erreur lors de la modification de l’annonce.');
       setUploading(false);
     }
+  };
+
+  const handleCancel = () => {
+    router.push('/mes-annonces'); // Retour sans sauvegarde
   };
 
   if (!user) {
@@ -211,7 +224,14 @@ export default function Modifier({ params }: { params: { id: string } }) {
             type="file"
             accept="image/*"
             onChange={handleImageChange}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-2"
+          />
+          <input
+            type="text"
+            value={imageUrl || ''}
+            onChange={handleUrlChange}
+            placeholder="Entrez une URL d'image (ex: https://example.com/image.jpg)"
+            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-2"
           />
           {(imagePreview || (imageUrl && imageUrl !== '')) && (
             <div className="mt-4">
@@ -223,13 +243,22 @@ export default function Modifier({ params }: { params: { id: string } }) {
             </div>
           )}
         </div>
-        <button
-          type="submit"
-          disabled={uploading}
-          className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400"
-        >
-          {uploading ? 'Modification...' : 'Modifier'}
-        </button>
+        <div className="flex space-x-4">
+          <button
+            type="submit"
+            disabled={uploading}
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400"
+          >
+            {uploading ? 'Modification...' : 'Modifier'}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
+          >
+            Annuler
+          </button>
+        </div>
       </form>
     </div>
   );

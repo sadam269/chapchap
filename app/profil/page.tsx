@@ -16,6 +16,7 @@ export default function Profil() {
   const [userData, setUserData] = useState({
     email: '',
     phone: '',
+    phoneCode: '+212',
     address: '',
     gender: '',
   });
@@ -48,6 +49,7 @@ export default function Profil() {
           setUserData({
             email: data.email || user.email || '',
             phone: data.phone || '',
+            phoneCode: data.phoneCode || '+212',
             address: data.address || '',
             gender: data.gender || '',
           });
@@ -60,7 +62,7 @@ export default function Profil() {
             gender: data.gender || '',
           });
         } else {
-          setUserData({ email: user.email || '', phone: '', address: '', gender: '' });
+          setUserData({ email: user.email || '', phone: '', phoneCode: '+212', address: '', gender: '' });
           setFormData({ email: user.email || '', password: '', phone: '', phoneCode: '+212', address: '', gender: '' });
         }
       } catch (error) {
@@ -81,6 +83,13 @@ export default function Profil() {
   const handleSave = async () => {
     if (!user) return;
 
+    // Validation personnalisée pour le numéro de téléphone (7 à 15 chiffres)
+    const phoneRegex = /^[0-9]{7,15}$/;
+    if (!formData.phone || !formData.phoneCode || !phoneRegex.test(formData.phone)) {
+      setError('Le numéro de téléphone doit contenir entre 7 et 15 chiffres.');
+      return;
+    }
+
     setLoading(true);
     try {
       const userRef = doc(db, 'users', user.uid);
@@ -90,6 +99,7 @@ export default function Profil() {
         phoneCode: formData.phoneCode,
         address: formData.address,
         gender: formData.gender,
+        isPhonePublic: true,
       }, { merge: true });
 
       if (formData.email !== user.email) {
@@ -124,9 +134,9 @@ export default function Profil() {
 
   return (
     <div className="container mx-auto p-4 bg-gray-100 rounded-lg shadow-md">
-      <h1 className="text-3xl font-bold mb-6">Mon Profil</h1>
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">Mon Profil</h1>
 
-      {error && <div className="text-red-600 mb-4">{error}</div>}
+      {error && <div className="text-red-600 mb-4 p-2 bg-red-100 rounded">{error}</div>}
 
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Informations</h2>
@@ -145,7 +155,7 @@ export default function Profil() {
             {userData.phone && (
               <div className="border-b pb-2">
                 <strong className="text-gray-700">Téléphone :</strong>
-                <span className="ml-2 text-gray-900">{userData.phone}</span>
+                <span className="ml-2 text-gray-900">{userData.phoneCode} {userData.phone}</span>
               </div>
             )}
             {userData.address && (
@@ -172,34 +182,38 @@ export default function Profil() {
         ) : (
           <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
             <div>
-              <label className="block text-gray-700">Email</label>
+              <label htmlFor="email" className="block text-gray-800 font-semibold mb-2">Email</label>
               <input
                 type="email"
+                id="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 required
               />
             </div>
             <div>
-              <label className="block text-gray-700">Mot de passe (requis pour changer l’email)</label>
+              <label htmlFor="password" className="block text-gray-800 font-semibold mb-2">Mot de passe (requis pour changer l’email)</label>
               <input
                 type="password"
+                id="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
             <div>
-              <label className="block text-gray-700">Téléphone</label>
+              <label htmlFor="phone" className="block text-gray-800 font-semibold mb-2">Téléphone</label>
               <div className="flex space-x-2">
                 <select
+                  id="phoneCode"
                   name="phoneCode"
                   value={formData.phoneCode}
                   onChange={handleChange}
-                  className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  required
                 >
                   {phoneCodes.map((code) => (
                     <option key={code} value={code}>{code}</option>
@@ -207,30 +221,34 @@ export default function Profil() {
                 </select>
                 <input
                   type="tel"
+                  id="phone"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-gray-700">Adresse</label>
+              <label htmlFor="address" className="block text-gray-800 font-semibold mb-2">Adresse</label>
               <input
                 type="text"
+                id="address"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
             <div>
-              <label className="block text-gray-700">Genre</label>
+              <label htmlFor="gender" className="block text-gray-800 font-semibold mb-2">Genre</label>
               <select
+                id="gender"
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               >
                 <option value="">Non spécifié</option>
                 <option value="Homme">Homme</option>
@@ -239,14 +257,14 @@ export default function Profil() {
             </div>
             <button
               type="submit"
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-semibold"
             >
               Sauvegarder
             </button>
             <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="ml-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
+              className="ml-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition font-semibold"
             >
               Annuler
             </button>

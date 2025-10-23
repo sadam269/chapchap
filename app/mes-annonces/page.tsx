@@ -11,6 +11,7 @@ export default function MesAnnonces() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [annonces, setAnnonces] = useState<any[]>([]);
+  const [filter, setFilter] = useState('Toutes');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -50,6 +51,12 @@ export default function MesAnnonces() {
     }
   };
 
+  // Filtrer les annonces selon le statut
+  const filteredAnnonces = annonces.filter((annonce) => {
+    if (filter === 'Toutes') return true;
+    return annonce.status === filter.toLowerCase();
+  });
+
   if (loading) {
     return <div className="container mx-auto p-4">Chargement...</div>;
   }
@@ -61,9 +68,23 @@ export default function MesAnnonces() {
   return (
     <div className="container mx-auto p-4 bg-gray-100 rounded-lg shadow-md">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Mes annonces</h1>
-      {annonces.length > 0 ? (
+      <div className="mb-4">
+        <label htmlFor="filter" className="mr-2 text-gray-700 font-semibold">Filtrer par statut :</label>
+        <select
+          id="filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="Toutes">Toutes</option>
+          <option value="Approuvées">Approuvées</option>
+          <option value="Pendantes">Pendantes</option>
+          <option value="Bloquées">Bloquées</option>
+        </select>
+      </div>
+      {filteredAnnonces.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {annonces.map((annonce) => (
+          {filteredAnnonces.map((annonce) => (
             <div key={annonce.id} className="bg-white p-4 rounded-lg shadow-md">
               <Link href={`/annonces/${annonce.id}`} className="block">
                 {annonce.imageUrl && (
@@ -78,6 +99,7 @@ export default function MesAnnonces() {
                 <p className="text-blue-600 font-bold mt-2">{annonce.prix} MAD</p>
                 <p className="text-gray-500 text-sm mt-1">Catégorie: {annonce.categorie}</p>
                 <p className="text-gray-500 text-sm">Localisation: {annonce.localisation}</p>
+                <p className="text-gray-500 text-sm">Statut: {annonce.status}</p>
               </Link>
               <div className="mt-4 flex space-x-2">
                 <Link href={`/mes-annonces/modifier/${annonce.id}`}>
@@ -96,7 +118,7 @@ export default function MesAnnonces() {
           ))}
         </div>
       ) : (
-        <p className="text-gray-600">Vous n’avez pas encore publié d’annonces.</p>
+        <p className="text-gray-600">Vous n’avez pas encore publié d’annonces ou aucune annonce ne correspond au filtre.</p>
       )}
       <button
         onClick={() => router.back()}
